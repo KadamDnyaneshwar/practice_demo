@@ -1,8 +1,11 @@
 
 import email
+import bcrypt
+import base64, hashlib
+from sqlite3 import connect
 from mailjet_rest import Client
 import os
-
+import bcrypt
 from lib2to3.pgen2 import token
 from multiprocessing import managers
 from multiprocessing.dummy import Manager
@@ -47,13 +50,24 @@ user=APIRouter()
 async def search_admin(id:int):
     return conn.execute(users.select().where(users.c.id==id)).fetchall()
 
-@user.post("/add_admin")
-async def add_admin(user:User):
-    conn.execute(users.insert().values(
-        username=user.username,
-        password=user.password,
-    ))
-    return conn.execute(users.select()).fetchall()
+@user.post("/add_admin/")
+async def add_admin(user:User): 
+    username=user.username
+    password=user.password
+
+    # username="swapnil"
+    # pw = "Test1234"
+    password=password .encode('utf-8')
+    username=username
+        
+    hash_pass = bcrypt.hashpw(base64.b64encode(hashlib.sha256(password).digest()),bcrypt.gensalt())
+    print(hash_pass)
+
+    query="INSERT INTO admin (password ,username) VALUES (\"%s\",'%s')" % (hash_pass, username)
+    print(query)
+    data=conn.execute(query)
+    print(data) 
+    return {'status':'Successful Adding data',"pass":hash_pass,"username":username}
 
 #updateadmin
 @user.put("/update_admin/{id}")
@@ -175,6 +189,16 @@ async def add_users_story(user:Story):
         ))
         return {"status":200,"message":"data added sucessfully..!!"}
 
+@user.get("/get_story/")
+async def find_story():
+    data= conn.execute(users4.select()).fetchall()
+    return data
+
+@user.get("/get_storyby_id/{user_id}")
+async def find_story(user_id:int):
+    data= conn.execute(users4.select().where(users4.c.user_id==user_id)).fetchall()
+    return data
+
 @user.post("/Refer_user/")
 async def refer_user(user:Refer_user):
         conn.execute(users5.insert().values(
@@ -205,7 +229,7 @@ async def send_mail():
         ],
         "Subject": "Greetings from Mailjet.",
         "TextPart": "My first Mailjet email",
-        "HTMLPart": "<h3>Dear passenger 1, welcome to <a href='https://www.mailjet.com/'>Mailjet</a>!</h3><br />May the delivery force be with you!",
+        "HTMLPart": "<h3>Dear passenger 1, welcome to <a href='http://127.0.0.1:8000/get_storyby_id/1'>Mailjet</a>!</h3><br />http://127.0.0.1:8000/get_storyby_id/1",
         "CustomID": "AppGettingStartedTest"
         }
     ]
@@ -235,7 +259,7 @@ async def send_mail():
 
 # 	template = """
 # 		<html>
-# 		<body>
+# 		<body>  b
 		
 
 # <p>Hi !!!
@@ -274,6 +298,9 @@ async def Completstory(use:CompletedStory):
         Tag=use.Tag,
         ))
         return {"status":200,"message":"data added sucessfully..!!"}
+
+
+
 
 
 
@@ -347,19 +374,29 @@ async def show_likes():
 
   
     
-@user.get("/addlikes/{id}")
-async def add_likes():
-
-    query="update users_likes set islike ='"+islike+1+"' where user_id={}"   
-    data=conn.execute(query)
-    print(data)
-    return {"status":200,"message":data }
-      
+# @user.put("/addlikes/{id}")
+# async def add_likes():
     
-@user.get("/disikes/{id}")
-async def add_likes():
+@user.put("/addlikes/{usre_id}")
+async def add_likes(user_id=int):
+    query="update users_likes set islike =islike+1 where user_id=1"
+    print(query)
+    data=conn.execute(query) 
 
-    query="update users_likes set islike ='"+dislike+1+"' where user_id={}"   
+    return {"status":200,"message":data }
+
+# # query="""update users_likes inner join user_registration  on users_likes.user_id=user_registration.id set users_likes.islike= islike + 1
+#             where user_registration.id='{id}'"""
+#     print(query)
+#     data=conn.execute(query) 
+
+#     return {"status":200,"message":data }
+    
+    
+    
+@user.put("/disikes/{id}") 
+async def add_likes():
+    query="update users_likes set dislike = dislike+1 where user_id= 1"   
     data=conn.execute(query)
     print(data)
     return {"status":200,"message":data }
@@ -403,7 +440,5 @@ async def recent_storise():
 @user.get("/status/")
 async def status():
     pass
-
-
 
 
